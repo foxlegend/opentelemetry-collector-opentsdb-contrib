@@ -1,0 +1,16 @@
+---
+apiVersion: 1
+
+deleteDatasources:
+  - name: OpenTSDB
+    orgId: 1
+
+datasources:
+  - name: OpenTSDB
+    type: opentsdb
+    access: proxy
+    orgId: 1
+    url: http://opentsdb:4242
+    jsonData:
+        version: 1
+        resolution: 2

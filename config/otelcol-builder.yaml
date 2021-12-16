@@ -1,0 +1,5 @@
+receivers:
+  - gomod: "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/simpleprometheusreceiver v0.40.0"
+exporters:
+  - gomod: "github.com/foxlegend/opentelemetry-collector-opentsdb-contrib/exporter/opentsdbexporter v0.40.0"
+    path: "./exporter/opentsdbexporter"

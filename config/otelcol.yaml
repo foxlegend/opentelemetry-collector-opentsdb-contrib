@@ -1,0 +1,19 @@
+receivers:
+  prometheus_simple:
+    collection_interval: 10s
+    endpoint: "localhost:9273"
+
+exporters:
+  opentsdb:
+    endpoint: http://localhost:4242/api/put?details=true&summary=true
+
+service:
+  pipelines:
+    metrics:
+      receivers:
+        - prometheus_simple
+      exporters:
+        - opentsdb
+  telemetry:
+    logs:
+      level: "debug"
