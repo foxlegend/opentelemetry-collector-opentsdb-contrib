@@ -40,5 +40,8 @@ func createLogger(cfg *Config) (*zap.Logger, error) {
 func createDefaultConfig() config.Exporter {
 	return &Config{
 		ExporterSettings: config.NewExporterSettings(config.NewComponentID("opentsdb")),
+		BatchSize:        20,
+		MaxTags:          8,
+		SkipTags:         make([]string, 0),
 	}
 }

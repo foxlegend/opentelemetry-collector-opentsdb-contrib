@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/foxlegend/opentelemetry-collector-opentsdb-contrib/exporter/opentsdbexporter/serialization"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/consumer"
@@ -15,24 +14,31 @@ import (
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 type OpenTSDBExporter struct {
 	logger     *zap.Logger
 	cfg        *Config
 	client     *http.Client
-	serializer *serialization.HttpSerializer
+	serializer *HttpSerializer
 }
 
 func (e *OpenTSDBExporter) PushMetrics(ctx context.Context, md pdata.Metrics) error {
 	e.logger.Info("MetricsExporter", zap.Int("#metrics", md.MetricCount()), zap.Int("#datapoints", md.DataPointCount()))
 	buf, err := e.serializer.Marshal(md)
+	e.logger.Debug("serialization results", zap.Int("#serialized", len(buf)), zap.Int("#errors", md.DataPointCount()-len(buf)))
 	if err != nil {
-		return err
+		if ce := e.logger.Check(zap.DebugLevel, "serialization errors"); ce != nil {
+			for i := 0; i < len(err); i++ {
+				ce.Write(zap.String(fmt.Sprintf("%d", i), err[i].Error()))
+			}
+		}
 	}
 
-	for i := 0; i < len(buf); i += 10 {
-		end := i + 10
+	for i := 0; i < len(buf); i += e.cfg.BatchSize {
+		end := i + e.cfg.BatchSize
 
 		if end > len(buf) {
 			end = len(buf)
@@ -52,7 +58,7 @@ func NewOpenTSDBExporter(config *Config, logger *zap.Logger) *OpenTSDBExporter {
 	return &OpenTSDBExporter{
 		cfg:        config,
 		logger:     logger,
-		serializer: serialization.NewHttpSerializer(logger),
+		serializer: NewHttpSerializer(logger, config.MaxTags, config.SkipTags),
 	}
 }
 
@@ -67,19 +73,21 @@ func NewMetricsExporter(config config.Exporter, logger *zap.Logger, set componen
 		exporterhelper.WithTimeout(exporterhelper.TimeoutSettings{Timeout: 0}),
 		exporterhelper.WithRetry(exporterhelper.RetrySettings{Enabled: false}),
 		exporterhelper.WithQueue(exporterhelper.QueueSettings{Enabled: false}),
-		exporterhelper.WithShutdown(loggerSync(logger)),
 		exporterhelper.WithStart(t.start),
 	)
 }
 
-func loggerSync(logger *zap.Logger) func(context.Context) error {
-	return func(context.Context) error {
-		err := logger.Sync()
+func (e *OpenTSDBExporter) start(_ context.Context, host component.Host) (err error) {
+	u, err := url.Parse(e.cfg.Endpoint)
+	if err != nil {
 		return err
 	}
-}
+	q := u.Query()
+	// Add details for better error handling
+	q.Set("details", "true")
+	u.RawQuery = q.Encode()
+	e.cfg.Endpoint = u.String()
 
-func (e *OpenTSDBExporter) start(_ context.Context, host component.Host) (err error) {
 	client, err := e.cfg.HTTPClientSettings.ToClient(host.GetExtensions())
 	if err != nil {
 		return err
@@ -95,7 +103,7 @@ func (e *OpenTSDBExporter) send(ctx context.Context, buffer []byte) error {
 		return consumererror.NewPermanent(err)
 	}
 
-	e.logger.Info("Sending Request")
+	e.logger.Sugar().Debugf("Sending Request (%d bytes)", len(buffer))
 	resp, err := e.client.Do(req)
 
 	if err != nil {
@@ -104,16 +112,39 @@ func (e *OpenTSDBExporter) send(ctx context.Context, buffer []byte) error {
 
 	defer resp.Body.Close()
 
-	e.logger.Info("Response", zap.Int("#statuscode", resp.StatusCode), zap.String("#status", resp.Status))
+	e.logger.Debug("Response", zap.Int("#statuscode", resp.StatusCode), zap.String("#status", resp.Status))
+	if resp.StatusCode == http.StatusBadRequest {
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			// if the response cannot be read, do not retry the batch as it may have been successful
+			e.logger.Error(fmt.Sprintf("failed to read response: %s", err.Error()))
+			return nil
+		}
 
-	// At least some metrics were not accepted
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		// if the response cannot be read, do not retry the batch as it may have been successful
-		e.logger.Error(fmt.Sprintf("failed to read response: %s", err.Error()))
-		return nil
+		responseBody := metricsResponse{}
+		if err := json.Unmarshal(bodyBytes, &responseBody); err != nil {
+			if strings.Contains(strings.ToLower(string(bodyBytes)), "chunked request not supported.") {
+				e.logger.Sugar().Errorf("Request too large (%d bytes). OpenTSDB does not support chunked request. Please decrease batch size.", len(buffer))
+			} else {
+				e.logger.Sugar().Errorf("failed to unmarshal response: %s (%s)", bodyBytes, err.Error())
+			}
+		}
+
+		e.logger.Info("Ingestion status", zap.Int("#success", responseBody.Ok), zap.Int("#failed", responseBody.Invalid))
+		for i := 0; i < len(responseBody.Errors); i++ {
+			e.logger.Debug("Ingestion error", zap.String("#metric", responseBody.Errors[i].Metric.String()), zap.String("#Error", responseBody.Errors[i].Error))
+		}
 	}
-
-	e.logger.Info("Body", zap.String("#bodxy", string(bodyBytes)))
 	return nil
+}
+
+type metricsResponse struct {
+	Ok      int                    `json:"success"`
+	Invalid int                    `json:"failed"`
+	Errors  []metricsResponseError `json:"errors"`
+}
+
+type metricsResponseError struct {
+	Metric Metric `json:"datapoint"`
+	Error  string `json:"error"`
 }

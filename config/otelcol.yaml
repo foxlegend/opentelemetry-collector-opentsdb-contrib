@@ -5,7 +5,12 @@ receivers:
 
 exporters:
   opentsdb:
-    endpoint: http://localhost:4242/api/put?details=true&summary=true
+    endpoint: http://localhost:4242/api/put
+    batch_size: 25
+    skip_tags:
+      - scheme
+      - port
+      - service.name
 
 service:
   pipelines:

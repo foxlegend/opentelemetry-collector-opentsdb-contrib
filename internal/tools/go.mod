@@ -2,7 +2,7 @@ module github.com/foxlegend/opentelemetry-collector-opentsdb-contrib/internal/to
 
 go 1.17
 
-require go.opentelemetry.io/collector/cmd/builder v0.40.0
+require go.opentelemetry.io/collector/cmd/builder v0.41.0
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
