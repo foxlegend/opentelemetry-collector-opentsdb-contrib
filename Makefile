@@ -10,8 +10,17 @@ install-tools:
 
 .PHONY: build-otelcol
 build-otelcol:
-	$(BUILD_OTELCOL) --output-path=dist --config=config/otelcol-builder.yaml
+	CGO_ENABLED=0 $(BUILD_OTELCOL) --output-path=dist --config=config/otelcol-builder.yaml
 
 .PHONY: run-otelcol
 run-otelcol:
 	$(OTELCOL) --config config/otelcol.yaml
+
+build-otelcol-docker: build-otelcol
+	docker-compose build collector
+
+run-otelcol-docker: build-otelcol-docker
+	docker-compose up collector
+
+run-3rdparty:
+	docker-compose up -d telegraf opentsdb grafana

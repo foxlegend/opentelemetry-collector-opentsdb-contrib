@@ -1,0 +1,30 @@
+receivers:
+  prometheus_simple:
+    collection_interval: 10s
+    endpoint: "telegraf:9273"
+  opentsdb:
+    endpoint: "0.0.0.0:4242"
+
+exporters:
+  opentsdb:
+    endpoint: http://opentsdb:4242/api/put
+    batch_size: 25
+    skip_tags:
+      - scheme
+      - port
+      - service.name
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    metrics:
+      receivers:
+#        - prometheus_simple
+        - opentsdb
+      exporters:
+#        - opentsdb
+        - logging
+  telemetry:
+    logs:
+      level: "debug"
