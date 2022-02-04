@@ -1,0 +1,3 @@
+[submodule "tcollector"]
+	path = tcollector
+	url = https://github.com/OpenTSDB/tcollector.git

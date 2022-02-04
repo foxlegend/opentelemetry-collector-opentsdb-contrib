@@ -1,0 +1,17 @@
+FROM registry.hub.docker.com/library/python:2.7-alpine
+
+LABEL description="TCollector metrics collector for OpenTSDB"
+
+ENV TCOLLECTOR_GIT_URL="https://github.com/OpenTSDB/tcollector.git"
+
+COPY requirements.txt /tcollector/requirements.txt
+
+WORKDIR /tcollector/
+
+RUN apk add --no-cache bash git                                     && \
+    pip install -r requirements.txt                                 && \
+    git clone ${TCOLLECTOR_GIT_URL}
+
+WORKDIR /tcollector/tcollector
+
+ENTRYPOINT ["python", "tcollector.py", "-P", "tcollector.pid", "--log-stdout"]

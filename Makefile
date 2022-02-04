@@ -16,11 +16,26 @@ build-otelcol:
 run-otelcol:
 	$(OTELCOL) --config config/otelcol.yaml
 
+.PHONY: build-otelcol-docker
 build-otelcol-docker: build-otelcol
 	docker-compose build collector
 
+.PHONY: run-otelcol-docker
 run-otelcol-docker: build-otelcol-docker
 	docker-compose up collector
 
+.PHONY: run-3rdparty
 run-3rdparty:
 	docker-compose up -d telegraf opentsdb grafana
+
+
+## TCollector
+#############
+start-tcollector:
+	python tcollector/tcollector.py -H localhost -p 4242 --http --log-stdout -P tcollector.pid
+
+stop-collector:
+	if [ -e tcollector.pid ]; then \
+  		kill -TERM $$(cat tcollector.pid) || true; \
+	fi;
+	rm tcollector.pid

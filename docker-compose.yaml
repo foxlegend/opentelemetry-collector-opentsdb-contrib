@@ -16,7 +16,7 @@ services:
   opentsdb:
     image: petergrace/opentsdb-docker
     ports:
-      - "4242:4242"
+      - "4243:4242"
 
   grafana:
     image: grafana/grafana
@@ -27,16 +27,19 @@ services:
     volumes:
       - ./docker/grafana/provisioning/:/etc/grafana/provisioning/
 
+  tcollector:
+    build:
+      context: ./docker/tcollector
+      dockerfile: Containerfile
+    image: tcollector:dev
+    command: -H collector -p 4242 --http
+
   collector:
     build:
       context: .
       dockerfile: docker/Dockerfile
     image: otel-collector:dev
     ports:
-      - "4243:4242"
+      - "4242:4242"
     volumes:
       - ./config/otelcol-docker.yaml:/config/otelcol.yaml
-
-
-  tcollector:
-    image: harisekhon/tcollector

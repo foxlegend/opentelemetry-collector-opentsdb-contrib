@@ -3,6 +3,9 @@ receivers:
     collection_interval: 10s
     endpoint: "localhost:9273"
 
+  opentsdb:
+    endpoint: 0.0.0.0:4242
+
 exporters:
   opentsdb:
     endpoint: http://localhost:4242/api/put
@@ -11,14 +14,16 @@ exporters:
       - scheme
       - port
       - service.name
+  logging:
+    loglevel: debug
 
 service:
   pipelines:
     metrics:
       receivers:
-        - prometheus_simple
-      exporters:
         - opentsdb
+      exporters:
+        - logging
   telemetry:
     logs:
       level: "debug"

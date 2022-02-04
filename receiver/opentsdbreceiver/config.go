@@ -2,10 +2,10 @@ package opentsdbreceiver
 
 import (
 	"go.opentelemetry.io/collector/config"
-	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 )
 
 type Config struct {
-	config.ReceiverSettings       `mapstructure:"-"`
-	confighttp.HTTPServerSettings `mapstructure:",squash"`
+	config.ReceiverSettings `mapstructure:"-"`
+	confignet.TCPAddr       `mapstructure:",squash"`
 }
