@@ -23,6 +23,7 @@ type OpenTSDBExporter struct {
 	cfg        *Config
 	client     *http.Client
 	serializer *HttpSerializer
+	settings   component.TelemetrySettings
 }
 
 func (e *OpenTSDBExporter) PushMetrics(ctx context.Context, md pdata.Metrics) error {
@@ -54,17 +55,18 @@ func (e *OpenTSDBExporter) PushMetrics(ctx context.Context, md pdata.Metrics) er
 	return nil
 }
 
-func NewOpenTSDBExporter(config *Config, logger *zap.Logger) *OpenTSDBExporter {
+func NewOpenTSDBExporter(config *Config, set component.ExporterCreateSettings, logger *zap.Logger) *OpenTSDBExporter {
 	return &OpenTSDBExporter{
 		cfg:        config,
 		logger:     logger,
 		serializer: NewHttpSerializer(logger, config.MaxTags, config.SkipTags),
+		settings:   set.TelemetrySettings,
 	}
 }
 
 func NewMetricsExporter(config config.Exporter, logger *zap.Logger, set component.ExporterCreateSettings) (component.MetricsExporter, error) {
 	cfg := config.(*Config)
-	t := NewOpenTSDBExporter(cfg, logger)
+	t := NewOpenTSDBExporter(cfg, set, logger)
 	return exporterhelper.NewMetricsExporter(
 		config,
 		set,
@@ -88,7 +90,7 @@ func (e *OpenTSDBExporter) start(_ context.Context, host component.Host) (err er
 	u.RawQuery = q.Encode()
 	e.cfg.Endpoint = u.String()
 
-	client, err := e.cfg.HTTPClientSettings.ToClient(host.GetExtensions())
+	client, err := e.cfg.HTTPClientSettings.ToClient(host.GetExtensions(), e.settings)
 	if err != nil {
 		return err
 	}
