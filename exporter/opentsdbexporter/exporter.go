@@ -16,6 +16,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 )
 
 type OpenTSDBExporter struct {
@@ -67,7 +69,7 @@ func NewOpenTSDBExporter(config *Config, set component.ExporterCreateSettings, l
 func NewMetricsExporter(config config.Exporter, logger *zap.Logger, set component.ExporterCreateSettings) (component.MetricsExporter, error) {
 	cfg := config.(*Config)
 	t := NewOpenTSDBExporter(cfg, set, logger)
-	return exporterhelper.NewMetricsExporter(
+	exporter, err := exporterhelper.NewMetricsExporter(
 		config,
 		set,
 		t.PushMetrics,
@@ -77,6 +79,10 @@ func NewMetricsExporter(config config.Exporter, logger *zap.Logger, set componen
 		exporterhelper.WithQueue(exporterhelper.QueueSettings{Enabled: false}),
 		exporterhelper.WithStart(t.start),
 	)
+	if err != nil {
+		return nil, err
+	}
+	return resourcetotelemetry.WrapMetricsExporter(cfg.ResourceToTelemetrySettings, exporter), nil
 }
 
 func (e *OpenTSDBExporter) start(_ context.Context, host component.Host) (err error) {

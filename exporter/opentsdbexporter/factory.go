@@ -4,15 +4,14 @@ import (
 	"context"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
-	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.uber.org/zap"
 )
 
 func NewFactory() component.ExporterFactory {
-	return exporterhelper.NewFactory(
+	return component.NewExporterFactory(
 		"opentsdb",
 		createDefaultConfig,
-		exporterhelper.WithMetrics(createMetricsExporter),
+		component.WithMetricsExporter(createMetricsExporter),
 	)
 }
 

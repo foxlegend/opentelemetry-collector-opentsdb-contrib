@@ -1,6 +1,7 @@
 package opentsdbexporter
 
 import (
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -19,6 +20,11 @@ type Config struct {
 	MaxTags int `mapstructure:"max_tags"`
 	// Tags to skip
 	SkipTags []string `mapstructure:"skip_tags"`
+
+	// ResourceToTelemetrySettings is the option for converting resource attributes to telemetry attributes.
+	// "Enabled" - A boolean field to enable/disable this option. Default is `false`.
+	// If enabled, all the resource attributes will be converted to metric labels by default.
+	ResourceToTelemetrySettings resourcetotelemetry.Settings `mapstructure:"resource_to_telemetry_conversion"`
 }
 
 var _ config.Exporter = (*Config)(nil)
