@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
-	"go.opentelemetry.io/collector/model/pdata"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
@@ -28,7 +28,7 @@ type OpenTSDBExporter struct {
 	settings   component.TelemetrySettings
 }
 
-func (e *OpenTSDBExporter) PushMetrics(ctx context.Context, md pdata.Metrics) error {
+func (e *OpenTSDBExporter) PushMetrics(ctx context.Context, md pmetric.Metrics) error {
 	e.logger.Info("MetricsExporter", zap.Int("#metrics", md.MetricCount()), zap.Int("#datapoints", md.DataPointCount()))
 	buf, err := e.serializer.Marshal(md)
 	e.logger.Debug("serialization results", zap.Int("#serialized", len(buf)), zap.Int("#errors", md.DataPointCount()-len(buf)))

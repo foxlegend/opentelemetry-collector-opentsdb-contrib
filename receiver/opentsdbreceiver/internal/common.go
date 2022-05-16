@@ -2,7 +2,8 @@ package internal
 
 import (
 	"encoding/json"
-	"go.opentelemetry.io/collector/model/pdata"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"strconv"
 	"strings"
 )
@@ -14,12 +15,12 @@ type OpenTSDBMetric struct {
 	Tags      map[string]string `json:"tags"`
 }
 
-func (o *OpenTSDBMetric) ToOtel() pdata.Metric {
-	md := pdata.NewMetric()
+func (o *OpenTSDBMetric) ToOtel() pmetric.Metric {
+	md := pmetric.NewMetric()
 
 	metricName := o.Metric
 	md.SetName(metricName)
-	md.SetDataType(pdata.MetricDataTypeGauge)
+	md.SetDataType(pmetric.MetricDataTypeGauge)
 	dp := md.Gauge().DataPoints().AppendEmpty()
 
 	// json.Number can be only of type int64 or float64
@@ -29,7 +30,7 @@ func (o *OpenTSDBMetric) ToOtel() pdata.Metric {
 		dp.SetDoubleVal(value)
 	}
 
-	ts := pdata.Timestamp(o.Timestamp * 1000000000)
+	ts := pcommon.Timestamp(o.Timestamp * 1000000000)
 	dp.SetTimestamp(ts)
 	dp.SetStartTimestamp(ts)
 

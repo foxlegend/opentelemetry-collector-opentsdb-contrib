@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumererror"
-	"go.opentelemetry.io/collector/model/pdata"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
 	"go.uber.org/zap"
 	"net/http"
@@ -50,7 +50,7 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 
 	opentsdbMetrics, serializationErrs := h.serializer.Serialize(req.Body)
 
-	ms := pdata.NewMetricSlice()
+	ms := pmetric.NewMetricSlice()
 	if opentsdbMetrics != nil {
 		for _, m := range opentsdbMetrics {
 			mp := ms.AppendEmpty()
@@ -58,10 +58,10 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	md := pdata.NewMetrics()
+	md := pmetric.NewMetrics()
 	rs := md.ResourceMetrics().AppendEmpty()
 	rs.SetSchemaUrl(conventions.SchemaURL)
-	ils := rs.InstrumentationLibraryMetrics().AppendEmpty()
+	ils := rs.ScopeMetrics().AppendEmpty()
 	ms.CopyTo(ils.Metrics())
 
 	if err := h.metricsConsumer.ConsumeMetrics(req.Context(), md); err != nil {

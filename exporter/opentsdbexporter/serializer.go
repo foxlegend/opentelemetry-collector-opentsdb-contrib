@@ -3,7 +3,8 @@ package opentsdbexporter
 import (
 	"bytes"
 	"fmt"
-	"go.opentelemetry.io/collector/model/pdata"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
 	"regexp"
 	"strings"
@@ -38,7 +39,7 @@ func NewHttpSerializer(logger *zap.Logger, maxTags int, skipTags []string) *Http
 	}
 }
 
-func (h HttpSerializer) Marshal(metrics pdata.Metrics) (sMetrics []*Metric, errs []error) {
+func (h HttpSerializer) Marshal(metrics pmetric.Metrics) (sMetrics []*Metric, errs []error) {
 	h.logger.Debug("HttpSerializer#Marshal", zap.Int("#metrics", metrics.MetricCount()), zap.Int("#datapoints", metrics.DataPointCount()))
 
 	rms := metrics.ResourceMetrics()
@@ -47,12 +48,12 @@ func (h HttpSerializer) Marshal(metrics pdata.Metrics) (sMetrics []*Metric, errs
 		rm := rms.At(i)
 		resource := rm.Resource()
 
-		ilms := rm.InstrumentationLibraryMetrics()
+		ilms := rm.ScopeMetrics()
 		for j := 0; j < ilms.Len(); j++ {
 			h.logger.Debug("InstrumentationLibraryMetric", zap.Int("#id", j))
 			ilm := ilms.At(j)
 
-			il := ilm.InstrumentationLibrary()
+			il := ilm.Scope()
 			h.logger.Debug("InstrumentationLibrary", zap.String("#name", il.Name()), zap.String("#version", il.Version()))
 
 			ms := ilm.Metrics()
@@ -61,14 +62,13 @@ func (h HttpSerializer) Marshal(metrics pdata.Metrics) (sMetrics []*Metric, errs
 				metric := ms.At(k)
 
 				switch metric.DataType() {
-				case pdata.MetricDataTypeNone:
-				case pdata.MetricDataTypeGauge:
+				case pmetric.MetricDataTypeGauge:
 					s, sErrs := h.serializeGauge(metric, resource, il)
 					if sErrs != nil {
 						errs = append(errs, sErrs...)
 					}
 					sMetrics = append(sMetrics, s...)
-				case pdata.MetricDataTypeSum:
+				case pmetric.MetricDataTypeSum:
 					s, sErrs := h.serializeSum(metric, resource, il)
 					if sErrs != nil {
 						errs = append(errs, sErrs...)
@@ -85,18 +85,18 @@ func (h HttpSerializer) Marshal(metrics pdata.Metrics) (sMetrics []*Metric, errs
 	return sMetrics, errs
 }
 
-func (h *HttpSerializer) serializeGauge(metric pdata.Metric, resource pdata.Resource, instrumentationLibrary pdata.InstrumentationLibrary) (mSlice []*Metric, errs []error) {
+func (h *HttpSerializer) serializeGauge(metric pmetric.Metric, resource pcommon.Resource, instrumentationLibrary pcommon.InstrumentationScope) (mSlice []*Metric, errs []error) {
 	dps := metric.Gauge().DataPoints()
 	for i := 0; i < dps.Len(); i++ {
 		dp := dps.At(i)
 
 		var value interface{}
 		switch dp.ValueType() {
-		case pdata.MetricValueTypeNone:
+		case pmetric.MetricValueTypeNone:
 			continue
-		case pdata.MetricValueTypeInt:
+		case pmetric.MetricValueTypeInt:
 			value = dp.IntVal()
-		case pdata.MetricValueTypeDouble:
+		case pmetric.MetricValueTypeDouble:
 			value = dp.DoubleVal()
 		default:
 			errs = append(errs, fmt.Errorf("unsupported gauge data point type %d", dp.ValueType()))
@@ -115,8 +115,8 @@ func (h *HttpSerializer) serializeGauge(metric pdata.Metric, resource pdata.Reso
 	return mSlice, errs
 }
 
-func (h *HttpSerializer) serializeSum(metric pdata.Metric, resource pdata.Resource, instrumentationLibrary pdata.InstrumentationLibrary) (mSlice []*Metric, errs []error) {
-	if metric.Sum().AggregationTemporality() != pdata.MetricAggregationTemporalityCumulative {
+func (h *HttpSerializer) serializeSum(metric pmetric.Metric, resource pcommon.Resource, instrumentationLibrary pcommon.InstrumentationScope) (mSlice []*Metric, errs []error) {
+	if metric.Sum().AggregationTemporality() != pmetric.MetricAggregationTemporalityCumulative {
 		return nil, append(errs, fmt.Errorf("unsupported sum aggregation temporality %q", metric.Sum().AggregationTemporality()))
 	}
 	if !metric.Sum().IsMonotonic() {
@@ -129,11 +129,11 @@ func (h *HttpSerializer) serializeSum(metric pdata.Metric, resource pdata.Resour
 
 		var value interface{}
 		switch dp.ValueType() {
-		case pdata.MetricValueTypeNone:
+		case pmetric.MetricValueTypeNone:
 			continue
-		case pdata.MetricValueTypeInt:
+		case pmetric.MetricValueTypeInt:
 			value = dp.IntVal()
-		case pdata.MetricValueTypeDouble:
+		case pmetric.MetricValueTypeDouble:
 			value = dp.DoubleVal()
 		default:
 			errs = append(errs, fmt.Errorf("unsupported sum data point type %d", dp.ValueType()))
@@ -152,11 +152,11 @@ func (h *HttpSerializer) serializeSum(metric pdata.Metric, resource pdata.Resour
 	return mSlice, errs
 }
 
-func (h *HttpSerializer) createTags(resource pdata.Resource, instrumentationLibrary pdata.InstrumentationLibrary, attributes pdata.AttributeMap, metricName string) (map[string]string, map[string]string) {
+func (h *HttpSerializer) createTags(resource pcommon.Resource, instrumentationLibrary pcommon.InstrumentationScope, attributes pcommon.Map, metricName string) (map[string]string, map[string]string) {
 	tags := make(map[string]string)
 	skipped := make(map[string]string)
 
-	attributes.Range(func(key string, value pdata.AttributeValue) bool {
+	attributes.Range(func(key string, value pcommon.Value) bool {
 		if key != "" {
 			if h.shouldIncludeTag(key) {
 				if len(tags) < h.maxTags {
@@ -187,8 +187,8 @@ func (h *HttpSerializer) createTags(resource pdata.Resource, instrumentationLibr
 	return tags, skipped
 }
 
-func (h *HttpSerializer) resourceToTags(resource pdata.Resource, tags map[string]string, skipped map[string]string) (map[string]string, map[string]string) {
-	resource.Attributes().Range(func(key string, value pdata.AttributeValue) bool {
+func (h *HttpSerializer) resourceToTags(resource pcommon.Resource, tags map[string]string, skipped map[string]string) (map[string]string, map[string]string) {
+	resource.Attributes().Range(func(key string, value pcommon.Value) bool {
 		if key != "" {
 			if h.shouldIncludeTag(key) {
 				if len(tags) < h.maxTags {
@@ -204,7 +204,7 @@ func (h *HttpSerializer) resourceToTags(resource pdata.Resource, tags map[string
 	return tags, skipped
 }
 
-func (h *HttpSerializer) instrumentationLibraryToTags(instrumentationLibrary pdata.InstrumentationLibrary, tags map[string]string, skipped map[string]string) (map[string]string, map[string]string) {
+func (h *HttpSerializer) instrumentationLibraryToTags(instrumentationLibrary pcommon.InstrumentationScope, tags map[string]string, skipped map[string]string) (map[string]string, map[string]string) {
 	if instrumentationLibrary.Name() != "" {
 		if len(tags) < h.maxTags {
 			tags["otel.library.name"] = sanitizeForOpenTSDB(instrumentationLibrary.Name())
