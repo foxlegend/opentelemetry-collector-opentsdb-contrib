@@ -92,11 +92,11 @@ func (h *HttpSerializer) serializeGauge(metric pmetric.Metric, resource pcommon.
 
 		var value interface{}
 		switch dp.ValueType() {
-		case pmetric.MetricValueTypeNone:
+		case pmetric.NumberDataPointValueTypeNone:
 			continue
-		case pmetric.MetricValueTypeInt:
+		case pmetric.NumberDataPointValueTypeInt:
 			value = dp.IntVal()
-		case pmetric.MetricValueTypeDouble:
+		case pmetric.NumberDataPointValueTypeDouble:
 			value = dp.DoubleVal()
 		default:
 			errs = append(errs, fmt.Errorf("unsupported gauge data point type %d", dp.ValueType()))
@@ -129,11 +129,11 @@ func (h *HttpSerializer) serializeSum(metric pmetric.Metric, resource pcommon.Re
 
 		var value interface{}
 		switch dp.ValueType() {
-		case pmetric.MetricValueTypeNone:
+		case pmetric.NumberDataPointValueTypeNone:
 			continue
-		case pmetric.MetricValueTypeInt:
+		case pmetric.NumberDataPointValueTypeInt:
 			value = dp.IntVal()
-		case pmetric.MetricValueTypeDouble:
+		case pmetric.NumberDataPointValueTypeDouble:
 			value = dp.DoubleVal()
 		default:
 			errs = append(errs, fmt.Errorf("unsupported sum data point type %d", dp.ValueType()))

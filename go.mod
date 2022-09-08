@@ -1,3 +1,3 @@
 module github.com/foxlegend/opentelemetry-collector-opentsdb-contrib
 
-go 1.17
+go 1.18

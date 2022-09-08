@@ -70,8 +70,9 @@ func NewMetricsExporter(config config.Exporter, logger *zap.Logger, set componen
 	cfg := config.(*Config)
 	t := NewOpenTSDBExporter(cfg, set, logger)
 	exporter, err := exporterhelper.NewMetricsExporter(
-		config,
+		context.TODO(),
 		set,
+		cfg,
 		t.PushMetrics,
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 		exporterhelper.WithTimeout(exporterhelper.TimeoutSettings{Timeout: 0}),
@@ -96,7 +97,7 @@ func (e *OpenTSDBExporter) start(_ context.Context, host component.Host) (err er
 	u.RawQuery = q.Encode()
 	e.cfg.Endpoint = u.String()
 
-	client, err := e.cfg.HTTPClientSettings.ToClient(host.GetExtensions(), e.settings)
+	client, err := e.cfg.HTTPClientSettings.ToClient(host, e.settings)
 	if err != nil {
 		return err
 	}

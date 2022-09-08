@@ -7,11 +7,15 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	stability = component.StabilityLevelInDevelopment
+)
+
 func NewFactory() component.ExporterFactory {
 	return component.NewExporterFactory(
 		"opentsdb",
 		createDefaultConfig,
-		component.WithMetricsExporter(createMetricsExporter),
+		component.WithMetricsExporter(createMetricsExporter, stability),
 	)
 }
 

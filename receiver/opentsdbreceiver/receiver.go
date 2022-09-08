@@ -7,7 +7,6 @@ import (
 	"github.com/reiver/go-telnet"
 	"github.com/soheilhy/cmux"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/component/componenterror"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
@@ -35,7 +34,7 @@ type metricsReceiver struct {
 
 func newMetricsReceiver(config *Config, logger *zap.Logger, settings component.TelemetrySettings, nextConsumer consumer.Metrics) (*metricsReceiver, error) {
 	if nextConsumer == nil {
-		return nil, componenterror.ErrNilNextConsumer
+		return nil, component.ErrNilNextConsumer
 	}
 
 	receiver := &metricsReceiver{
