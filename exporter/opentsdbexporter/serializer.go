@@ -39,7 +39,7 @@ func NewHttpSerializer(logger *zap.Logger, maxTags int, skipTags []string) *Http
 	}
 }
 
-func (h HttpSerializer) Marshal(metrics pmetric.Metrics) (sMetrics []*Metric, errs []error) {
+func (h *HttpSerializer) Marshal(metrics pmetric.Metrics) (sMetrics []*Metric, errs []error) {
 	h.logger.Debug("HttpSerializer#Marshal", zap.Int("#metrics", metrics.MetricCount()), zap.Int("#datapoints", metrics.DataPointCount()))
 
 	rms := metrics.ResourceMetrics()
@@ -61,21 +61,21 @@ func (h HttpSerializer) Marshal(metrics pmetric.Metrics) (sMetrics []*Metric, er
 				h.logger.Debug("Metric", zap.Int("#id", k))
 				metric := ms.At(k)
 
-				switch metric.DataType() {
-				case pmetric.MetricDataTypeGauge:
+				switch metric.Type() {
+				case pmetric.MetricTypeGauge:
 					s, sErrs := h.serializeGauge(metric, resource, il)
 					if sErrs != nil {
 						errs = append(errs, sErrs...)
 					}
 					sMetrics = append(sMetrics, s...)
-				case pmetric.MetricDataTypeSum:
+				case pmetric.MetricTypeSum:
 					s, sErrs := h.serializeSum(metric, resource, il)
 					if sErrs != nil {
 						errs = append(errs, sErrs...)
 					}
 					sMetrics = append(sMetrics, s...)
 				default:
-					errs = append(errs, fmt.Errorf("unhandled DataType: %s", metric.DataType()))
+					errs = append(errs, fmt.Errorf("unhandled DataType: %s", metric.Type()))
 				}
 
 			}
@@ -92,12 +92,12 @@ func (h *HttpSerializer) serializeGauge(metric pmetric.Metric, resource pcommon.
 
 		var value interface{}
 		switch dp.ValueType() {
-		case pmetric.NumberDataPointValueTypeNone:
+		case pmetric.NumberDataPointValueTypeEmpty:
 			continue
 		case pmetric.NumberDataPointValueTypeInt:
-			value = dp.IntVal()
+			value = dp.IntValue()
 		case pmetric.NumberDataPointValueTypeDouble:
-			value = dp.DoubleVal()
+			value = dp.DoubleValue()
 		default:
 			errs = append(errs, fmt.Errorf("unsupported gauge data point type %d", dp.ValueType()))
 		}
@@ -116,7 +116,7 @@ func (h *HttpSerializer) serializeGauge(metric pmetric.Metric, resource pcommon.
 }
 
 func (h *HttpSerializer) serializeSum(metric pmetric.Metric, resource pcommon.Resource, instrumentationLibrary pcommon.InstrumentationScope) (mSlice []*Metric, errs []error) {
-	if metric.Sum().AggregationTemporality() != pmetric.MetricAggregationTemporalityCumulative {
+	if metric.Sum().AggregationTemporality() != pmetric.AggregationTemporalityCumulative {
 		return nil, append(errs, fmt.Errorf("unsupported sum aggregation temporality %q", metric.Sum().AggregationTemporality()))
 	}
 	if !metric.Sum().IsMonotonic() {
@@ -129,12 +129,12 @@ func (h *HttpSerializer) serializeSum(metric pmetric.Metric, resource pcommon.Re
 
 		var value interface{}
 		switch dp.ValueType() {
-		case pmetric.NumberDataPointValueTypeNone:
+		case pmetric.NumberDataPointValueTypeEmpty:
 			continue
 		case pmetric.NumberDataPointValueTypeInt:
-			value = dp.IntVal()
+			value = dp.IntValue()
 		case pmetric.NumberDataPointValueTypeDouble:
-			value = dp.DoubleVal()
+			value = dp.DoubleValue()
 		default:
 			errs = append(errs, fmt.Errorf("unsupported sum data point type %d", dp.ValueType()))
 		}

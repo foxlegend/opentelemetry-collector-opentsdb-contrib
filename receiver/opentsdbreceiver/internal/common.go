@@ -20,14 +20,14 @@ func (o *OpenTSDBMetric) ToOtel() pmetric.Metric {
 
 	metricName := o.Metric
 	md.SetName(metricName)
-	md.SetDataType(pmetric.MetricDataTypeGauge)
+	md.SetEmptyGauge()
 	dp := md.Gauge().DataPoints().AppendEmpty()
 
 	// json.Number can be only of type int64 or float64
 	if value, err := o.Value.Int64(); err == nil {
-		dp.SetIntVal(value)
+		dp.SetIntValue(value)
 	} else if value, err := o.Value.Float64(); err == nil {
-		dp.SetDoubleVal(value)
+		dp.SetDoubleValue(value)
 	}
 
 	ts := pcommon.Timestamp(o.Timestamp * 1000000000)
@@ -35,7 +35,7 @@ func (o *OpenTSDBMetric) ToOtel() pmetric.Metric {
 	dp.SetStartTimestamp(ts)
 
 	for key, value := range o.Tags {
-		dp.Attributes().InsertString(key, value)
+		dp.Attributes().PutStr(key, value)
 	}
 
 	return md
