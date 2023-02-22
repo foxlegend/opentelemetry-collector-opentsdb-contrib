@@ -5,17 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config"
-	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/consumer/consumererror"
-	"go.opentelemetry.io/collector/exporter/exporterhelper"
-	"go.opentelemetry.io/collector/pdata/pmetric"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/consumererror"
+	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 )
@@ -57,7 +58,7 @@ func (e *OpenTSDBExporter) PushMetrics(ctx context.Context, md pmetric.Metrics) 
 	return nil
 }
 
-func NewOpenTSDBExporter(config *Config, set component.ExporterCreateSettings, logger *zap.Logger) *OpenTSDBExporter {
+func NewOpenTSDBExporter(config *Config, set exporter.CreateSettings, logger *zap.Logger) *OpenTSDBExporter {
 	return &OpenTSDBExporter{
 		cfg:        config,
 		logger:     logger,
@@ -66,7 +67,7 @@ func NewOpenTSDBExporter(config *Config, set component.ExporterCreateSettings, l
 	}
 }
 
-func NewMetricsExporter(config config.Exporter, logger *zap.Logger, set component.ExporterCreateSettings) (component.MetricsExporter, error) {
+func NewMetricsExporter(config component.Config, logger *zap.Logger, set exporter.CreateSettings) (exporter.Metrics, error) {
 	cfg := config.(*Config)
 	t := NewOpenTSDBExporter(cfg, set, logger)
 	exporter, err := exporterhelper.NewMetricsExporter(

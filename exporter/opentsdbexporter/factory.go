@@ -3,23 +3,24 @@ package opentsdbexporter
 import (
 	"context"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config"
+	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.uber.org/zap"
 )
 
 const (
-	stability = component.StabilityLevelInDevelopment
+		stability = component.StabilityLevelDevelopment
 )
 
-func NewFactory() component.ExporterFactory {
-	return component.NewExporterFactory(
+func NewFactory() exporter.Factory {
+	return exporter.NewFactory(
 		"opentsdb",
 		createDefaultConfig,
-		component.WithMetricsExporter(createMetricsExporter, stability),
+		exporter.WithMetrics(createMetricsExporter, stability),
 	)
 }
 
-func createMetricsExporter(_ context.Context, settings component.ExporterCreateSettings, config config.Exporter) (component.MetricsExporter, error) {
+func createMetricsExporter(_ context.Context, settings exporter.CreateSettings, config component.Config) (exporter.Metrics, error) {
 	cfg := config.(*Config)
 
 	exporterLogger, err := createLogger(cfg)
@@ -40,9 +41,10 @@ func createLogger(cfg *Config) (*zap.Logger, error) {
 	return loggingLogger, nil
 }
 
-func createDefaultConfig() config.Exporter {
+func createDefaultConfig() component.Config {
 	return &Config{
-		ExporterSettings: config.NewExporterSettings(config.NewComponentID("opentsdb")),
+		TimeoutSettings: exporterhelper.NewDefaultTimeoutSettings(),
+		RetrySettings: exporterhelper.NewDefaultRetrySettings(),
 		BatchSize:        20,
 		MaxTags:          8,
 		SkipTags:         make([]string, 0),

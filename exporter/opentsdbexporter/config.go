@@ -3,13 +3,15 @@ package opentsdbexporter
 import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/collector/config"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"strings"
 )
 
 type Config struct {
-	config.ExporterSettings `mapstructure:",squash"`
+	exporterhelper.TimeoutSettings `mapstructure:",squash"` // squash ensures fields are correctly decoded in embedded struct.
+	exporterhelper.RetrySettings   `mapstructure:"retry_on_failure"`
 
 	// OpenTSDB Endpoint
 	confighttp.HTTPClientSettings `mapstructure:",squash"`
@@ -27,7 +29,7 @@ type Config struct {
 	ResourceToTelemetrySettings resourcetotelemetry.Settings `mapstructure:"resource_to_telemetry_conversion"`
 }
 
-var _ config.Exporter = (*Config)(nil)
+var _ component.Config = (*Config)(nil)
 
 func (cfg *Config) Validate() error {
 	if !(strings.HasPrefix(cfg.Endpoint, "http://") || strings.HasPrefix(cfg.Endpoint, "https")) {
