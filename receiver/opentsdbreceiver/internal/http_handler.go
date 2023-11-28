@@ -51,11 +51,9 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 	opentsdbMetrics, serializationErrs := h.serializer.Serialize(req.Body)
 
 	ms := pmetric.NewMetricSlice()
-	if opentsdbMetrics != nil {
-		for _, m := range opentsdbMetrics {
-			mp := ms.AppendEmpty()
-			m.ToOtel().CopyTo(mp)
-		}
+	for _, m := range opentsdbMetrics {
+		mp := ms.AppendEmpty()
+		m.ToOtel().CopyTo(mp)
 	}
 
 	md := pmetric.NewMetrics()
@@ -74,7 +72,6 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 	}
 
 	h.writeDetails(w, len(opentsdbMetrics), len(serializationErrs), serializationErrs)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *HttpHandler) unhandledHttpMethod(w http.ResponseWriter, req *http.Request) {

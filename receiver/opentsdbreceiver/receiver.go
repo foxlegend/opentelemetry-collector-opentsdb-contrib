@@ -3,6 +3,11 @@ package opentsdbreceiver
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"strings"
+	"sync"
+
 	"github.com/foxlegend/opentelemetry-collector-opentsdb-contrib/receiver/opentsdbreceiver/internal"
 	"github.com/reiver/go-telnet"
 	"github.com/soheilhy/cmux"
@@ -11,10 +16,6 @@ import (
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
 	"go.uber.org/zap"
-	"net"
-	"net/http"
-	"strings"
-	"sync"
 )
 
 type metricsReceiver struct {
