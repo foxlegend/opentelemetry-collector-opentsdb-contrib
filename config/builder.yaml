@@ -1,0 +1,22 @@
+dist:
+  name: otelcol-dev
+  description: Basic OTel Collector distribution for Developers
+  output_path: ./otelcol-dev
+  otelcol_version: 0.90.0
+receivers:
+  - gomod: "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/simpleprometheusreceiver v0.90.0"
+  - gomod: "github.com/foxlegend/opentelemetry-collector-opentsdb-contrib/receiver/opentsdbreceiver v0.90.0"
+    path: "./receiver/opentsdbreceiver"
+processors:
+  - gomod: "github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.90.0"
+  - gomod: "github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstransformprocessor v0.90.0"
+  - gomod: "github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.90.0"
+exporters:
+  - gomod: "github.com/foxlegend/opentelemetry-collector-opentsdb-contrib/exporter/opentsdbexporter v0.90.0"
+    path: "./exporter/opentsdbexporter"
+  - import: "go.opentelemetry.io/collector/exporter/debugexporter"
+    gomod: "go.opentelemetry.io/collector v0.90.0"
+  - gomod:  "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.90.0"
+extensions:
+  - import: "go.opentelemetry.io/collector/extension/zpagesextension"
+    gomod: "go.opentelemetry.io/collector v0.90.0"

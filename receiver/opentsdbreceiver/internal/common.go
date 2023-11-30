@@ -2,10 +2,12 @@ package internal
 
 import (
 	"encoding/json"
-	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 	"strconv"
 	"strings"
+	"time"
+
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
 type OpenTSDBMetric struct {
@@ -30,7 +32,13 @@ func (o *OpenTSDBMetric) ToOtel() pmetric.Metric {
 		dp.SetDoubleValue(value)
 	}
 
-	ts := pcommon.Timestamp(o.Timestamp * 1000000000)
+	
+	var ts pcommon.Timestamp
+	if IsTimestampSeconds(o.Timestamp) {
+		ts = pcommon.Timestamp(o.Timestamp * 1000000000)
+	}  else {
+		ts = pcommon.Timestamp(o.Timestamp * 1000000)
+	}
 	dp.SetTimestamp(ts)
 	dp.SetStartTimestamp(ts)
 
@@ -39,6 +47,13 @@ func (o *OpenTSDBMetric) ToOtel() pmetric.Metric {
 	}
 
 	return md
+}
+
+func IsTimestampSeconds(timestamp FlexUInt64) bool {
+	if t:=time.UnixMilli(int64(timestamp)); t.Year() > 1971 {
+		return false
+	}
+	return true
 }
 
 // FlexInt64 and FlexFloat64 trick comes from

@@ -34,6 +34,6 @@ func createMetricsReceiver(
 	config component.Config,
 	nextConsumer consumer.Metrics,
 ) (receiver.Metrics, error) {
-	cfg := config.(*Config)
-	return newMetricsReceiver(cfg, params.Logger, params.TelemetrySettings, nextConsumer)
+	// return newMetricsReceiver(cfg, params.Logger, params.TelemetrySettings, nextConsumer)
+	return newMetricsReceiver(config.(*Config), params, nextConsumer)
 }

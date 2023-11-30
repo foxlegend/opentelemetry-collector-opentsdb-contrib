@@ -3,13 +3,15 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/consumer/consumererror"
-	"go.opentelemetry.io/collector/pdata/pmetric"
-	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
-	"go.uber.org/zap"
 	"net/http"
 	"runtime"
+
+	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/consumererror"
+	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/receiver/receiverhelper"
+	"go.uber.org/zap"
 )
 
 const fallbackContentType = "application/json"
@@ -19,13 +21,16 @@ type HttpHandler struct {
 
 	serializer      *JsonSerializer
 	metricsConsumer consumer.Metrics
+
+	obsrecv *receiverhelper.ObsReport
 }
 
-func NewHttpHandler(logger *zap.Logger, consumer consumer.Metrics) *HttpHandler {
+func NewHttpHandler(logger *zap.Logger, consumer consumer.Metrics, obsrecv *receiverhelper.ObsReport) *HttpHandler {
 	return &HttpHandler{
 		logger:          logger,
 		serializer:      NewJsonSerializer(logger),
 		metricsConsumer: consumer,
+		obsrecv:         obsrecv,
 	}
 }
 
@@ -50,6 +55,8 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 
 	opentsdbMetrics, serializationErrs := h.serializer.Serialize(req.Body)
 
+	ctx := h.obsrecv.StartMetricsOp(req.Context())
+
 	ms := pmetric.NewMetricSlice()
 	for _, m := range opentsdbMetrics {
 		mp := ms.AppendEmpty()
@@ -62,7 +69,9 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 	ils := rs.ScopeMetrics().AppendEmpty()
 	ms.CopyTo(ils.Metrics())
 
-	if err := h.metricsConsumer.ConsumeMetrics(req.Context(), md); err != nil {
+	err := h.metricsConsumer.ConsumeMetrics(req.Context(), md)
+	h.obsrecv.EndMetricsOp(ctx, "opentsdb", md.DataPointCount(), err)
+	if err != nil {
 		if consumererror.IsPermanent(err) {
 			w.WriteHeader(http.StatusBadRequest)
 		} else {

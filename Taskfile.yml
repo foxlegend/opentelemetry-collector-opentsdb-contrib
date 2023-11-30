@@ -1,0 +1,17 @@
+version: '3'
+
+env:
+  OCB_VERSION: '0.90.0'
+  OCB_PLATFORM: 'linux'
+  OCB_ARCH: 'amd64'
+
+tasks:
+  download-ocb:
+    cmds:
+      - mkdir -p bin
+      - wget -O bin/ocb https://github.com/open-telemetry/opentelemetry-collector/releases/download/cmd%2Fbuilder%2Fv{{.OCB_VERSION}}/ocb_{{.OCB_VERSION}}_{{.OCB_PLATFORM}}_{{.OCB_ARCH}}
+      - chmod +x bin/ocb
+
+  build-dist:
+    cmds:
+      - ./bin/ocb --config config/builder.yaml

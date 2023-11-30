@@ -15,6 +15,8 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/receiver"
+	"go.opentelemetry.io/collector/receiver/receiverhelper"
 	"go.uber.org/zap"
 )
 
@@ -30,21 +32,32 @@ type metricsReceiver struct {
 	telnetServerLn net.Listener
 	wg             sync.WaitGroup
 
+	obsrecv *receiverhelper.ObsReport
+
 	settings component.TelemetrySettings
 }
 
-func newMetricsReceiver(config *Config, logger *zap.Logger, settings component.TelemetrySettings, nextConsumer consumer.Metrics) (*metricsReceiver, error) {
+func newMetricsReceiver(config *Config, settings receiver.CreateSettings, nextConsumer consumer.Metrics) (*metricsReceiver, error) {
+	//func newMetricsReceiver(config *Config, logger *zap.Logger, settings component.TelemetrySettings, nextConsumer consumer.Metrics) (*metricsReceiver, error) {
 	if nextConsumer == nil {
 		return nil, component.ErrNilNextConsumer
 	}
+	obsrecv, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
+		ReceiverID:             settings.ID,
+		Transport:              "http",
+		ReceiverCreateSettings: settings,
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	receiver := &metricsReceiver{
-		logger:          logger,
+	return &metricsReceiver{
 		metricsConsumer: nextConsumer,
 		tcpServerAddr:   &config.TCPAddr,
-		settings:        settings,
-	}
-	return receiver, nil
+		logger:          settings.Logger,
+		obsrecv:         obsrecv,
+		settings:        settings.TelemetrySettings,
+	}, err
 }
 
 func (r *metricsReceiver) Start(_ context.Context, host component.Host) error {
@@ -120,6 +133,6 @@ func (r *metricsReceiver) Shutdown(ctx context.Context) error {
 func (r *metricsReceiver) newHttpServer(host component.Host, opts ...confighttp.ToServerOption) (*http.Server, error) {
 	// initialize somme dummy config to take advantage of OTEL observability
 	dummyConfig := &confighttp.HTTPServerSettings{Endpoint: r.tcpServerAddr.Endpoint}
-	httpHandler := internal.NewHttpHandler(r.logger, r.metricsConsumer)
+	httpHandler := internal.NewHttpHandler(r.logger, r.metricsConsumer, r.obsrecv)
 	return dummyConfig.ToServer(host, r.settings, httpHandler.NewHttpRouter(), opts...)
 }
