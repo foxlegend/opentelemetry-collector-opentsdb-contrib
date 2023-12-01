@@ -78,7 +78,7 @@ func (j *JsonSerializer) serializeMultiple(decoder *json.Decoder) (metrics []*Op
 func (j *JsonSerializer) serializeMetric(decoder *json.Decoder) (*OpenTSDBMetric, error) {
 	metric := OpenTSDBMetric{}
 	if err := decoder.Decode(&metric); err != nil {
-		j.logger.Error(fmt.Sprintf("Unable to decode Metric: %s", err))
+		j.logger.Warn(fmt.Sprintf("Unable to decode Metric: %s", err))
 		return nil, err
 	}
 	return &metric, nil

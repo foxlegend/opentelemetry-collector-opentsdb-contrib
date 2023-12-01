@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -71,6 +72,12 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 
 	err := h.metricsConsumer.ConsumeMetrics(req.Context(), md)
 	h.obsrecv.EndMetricsOp(ctx, "opentsdb", md.DataPointCount(), err)
+
+	// Report serialization errors
+	if len(serializationErrs) > 0 {
+		h.obsrecv.EndMetricsOp(ctx, "opentsdb", len(serializationErrs), errors.New("get serialization errors."));
+	}
+
 	if err != nil {
 		if consumererror.IsPermanent(err) {
 			w.WriteHeader(http.StatusBadRequest)
