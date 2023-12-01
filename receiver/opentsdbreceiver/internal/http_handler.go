@@ -107,9 +107,7 @@ func (h *HttpHandler) unhandledHttpMethod(w http.ResponseWriter, req *http.Reque
 }
 
 func (h *HttpHandler) writeDetails(w http.ResponseWriter, successCount int, errorsCount int, errors []error) {
-
 	var dpErrors []*opentsdbDataPointError
-	h.logger.Info("errors", zap.Int("count", len(errors)))
 	for i := 0; i < len(errors); i++ {
 		dpErrors = append(dpErrors, &opentsdbDataPointError{
 			Error: errors[i].Error(),
