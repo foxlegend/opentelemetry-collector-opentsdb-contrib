@@ -3,15 +3,18 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"io"
 	"strings"
+
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 type JsonSerializer struct {
 	logger *zap.Logger
 }
+
+
 
 func NewJsonSerializer(logger *zap.Logger) *JsonSerializer {
 	return &JsonSerializer{
@@ -67,6 +70,11 @@ func (j *JsonSerializer) serializeMultiple(decoder *json.Decoder) (metrics []*Op
 		metric, err := j.serializeMetric(decoder)
 		if err != nil {
 			errs = append(errs, err)
+			// Break when JSon Deserialization error is unrecoverable
+			if _, ok := err.(*JsonDeserializationUnrecoverableError); ok {
+				j.logger.Warn("Unrecoverable error, stopping deserialization")
+				return metrics, errs
+			}
 		}
 		if metric != nil {
 			metrics = append(metrics, metric)
@@ -77,9 +85,15 @@ func (j *JsonSerializer) serializeMultiple(decoder *json.Decoder) (metrics []*Op
 
 func (j *JsonSerializer) serializeMetric(decoder *json.Decoder) (*OpenTSDBMetric, error) {
 	metric := OpenTSDBMetric{}
-	if err := decoder.Decode(&metric); err != nil {
-		j.logger.Warn(fmt.Sprintf("Unable to decode Metric: %s", err))
-		return nil, err
+	if decodeError := decoder.Decode(&metric); decodeError != nil {
+		j.logger.Warn(fmt.Sprintf("Unable to decode Metric: %s", decodeError))
+
+		// We want to prevent the collector from crashing on invalid characters
+		if strings.Contains(decodeError.Error(), "invalid character") {
+			return nil, &JsonDeserializationUnrecoverableError{fmt.Errorf("JSON Deserialization met an unrecoverable problem: [%s], next metrics are skipped", decodeError)}
+		}
+
+		return nil, decodeError
 	}
 	return &metric, nil
 }

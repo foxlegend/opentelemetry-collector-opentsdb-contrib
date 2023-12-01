@@ -75,7 +75,7 @@ func (h *HttpHandler) HandleWrite(w http.ResponseWriter, req *http.Request) {
 
 	// Report serialization errors
 	if len(serializationErrs) > 0 {
-		h.obsrecv.EndMetricsOp(ctx, "opentsdb", len(serializationErrs), errors.New("get serialization errors."));
+		h.obsrecv.EndMetricsOp(ctx, "opentsdb", len(serializationErrs), errors.New("get serialization errors"));
 	}
 
 	if err != nil {
@@ -108,7 +108,8 @@ func (h *HttpHandler) unhandledHttpMethod(w http.ResponseWriter, req *http.Reque
 
 func (h *HttpHandler) writeDetails(w http.ResponseWriter, successCount int, errorsCount int, errors []error) {
 
-	dpErrors := make([]*opentsdbDataPointError, len(errors))
+	var dpErrors []*opentsdbDataPointError
+	h.logger.Info("errors", zap.Int("count", len(errors)))
 	for i := 0; i < len(errors); i++ {
 		dpErrors = append(dpErrors, &opentsdbDataPointError{
 			Error: errors[i].Error(),
