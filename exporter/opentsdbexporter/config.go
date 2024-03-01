@@ -11,7 +11,6 @@ import (
 
 type Config struct {
 	exporterhelper.TimeoutSettings `mapstructure:",squash"` // squash ensures fields are correctly decoded in embedded struct.
-	exporterhelper.RetrySettings   `mapstructure:"retry_on_failure"`
 
 	// OpenTSDB Endpoint
 	confighttp.HTTPClientSettings `mapstructure:",squash"`

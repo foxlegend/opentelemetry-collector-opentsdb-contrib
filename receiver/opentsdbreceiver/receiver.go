@@ -60,8 +60,8 @@ func newMetricsReceiver(config *Config, settings receiver.CreateSettings, nextCo
 	}, err
 }
 
-func (r *metricsReceiver) Start(_ context.Context, host component.Host) error {
-	ln, err := r.tcpServerAddr.Listen()
+func (r *metricsReceiver) Start(context context.Context, host component.Host) error {
+	ln, err := r.tcpServerAddr.Listen(context)
 	if err != nil {
 		return fmt.Errorf("failed to bind to address %s: %w", r.tcpServerAddr.Endpoint, err)
 	}
@@ -89,19 +89,19 @@ func (r *metricsReceiver) Start(_ context.Context, host component.Host) error {
 	go func() {
 		defer r.wg.Done()
 		if err := r.httpServer.Serve(httpl); err != nil && err != http.ErrServerClosed {
-			host.ReportFatalError(err)
+			r.settings.ReportStatus(component.NewFatalErrorEvent(err))
 		}
 	}()
 	go func() {
 		defer r.wg.Done()
 		if err := r.telnetServer.Serve(telnetl); err != nil && err != cmux.ErrServerClosed {
-			host.ReportFatalError(err)
+			r.settings.ReportStatus(component.NewFatalErrorEvent(err))
 		}
 	}()
 	go func() {
 		defer r.wg.Done()
 		if err := m.Serve(); err != nil && err != cmux.ErrServerClosed && !strings.Contains(err.Error(), "use of closed network connection") {
-			host.ReportFatalError(err)
+			r.settings.ReportStatus(component.NewFatalErrorEvent(err))
 		}
 	}()
 	return nil

@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/exporter"
@@ -30,7 +31,7 @@ type OpenTSDBExporter struct {
 }
 
 func (e *OpenTSDBExporter) PushMetrics(ctx context.Context, md pmetric.Metrics) error {
-	e.logger.Info("MetricsExporter", zap.Int("#metrics", md.MetricCount()), zap.Int("#datapoints", md.DataPointCount()))
+	e.logger.Debug("MetricsExporter", zap.Int("#metrics", md.MetricCount()), zap.Int("#datapoints", md.DataPointCount()))
 	buf, err := e.serializer.Marshal(md)
 	e.logger.Debug("serialization results", zap.Int("#serialized", len(buf)), zap.Int("#errors", md.DataPointCount()-len(buf)))
 	if err != nil {
@@ -77,7 +78,7 @@ func NewMetricsExporter(config component.Config, logger *zap.Logger, set exporte
 		t.PushMetrics,
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 		exporterhelper.WithTimeout(exporterhelper.TimeoutSettings{Timeout: 0}),
-		exporterhelper.WithRetry(exporterhelper.RetrySettings{Enabled: false}),
+		exporterhelper.WithRetry(configretry.BackOffConfig{Enabled: false}),
 		exporterhelper.WithQueue(exporterhelper.QueueSettings{Enabled: false}),
 		exporterhelper.WithStart(t.start),
 	)
@@ -124,7 +125,7 @@ func (e *OpenTSDBExporter) send(ctx context.Context, buffer []byte) error {
 
 	e.logger.Debug("Response", zap.Int("#statuscode", resp.StatusCode), zap.String("#status", resp.Status))
 	if resp.StatusCode == http.StatusBadRequest {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			// if the response cannot be read, do not retry the batch as it may have been successful
 			e.logger.Error(fmt.Sprintf("failed to read response: %s", err.Error()))

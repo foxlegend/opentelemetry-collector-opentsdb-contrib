@@ -173,7 +173,7 @@ func (h *HttpSerializer) createTags(resource pcommon.Resource, instrumentationLi
 	tags, skipped = h.resourceToTags(resource, tags, skipped)
 	tags, skipped = h.instrumentationLibraryToTags(instrumentationLibrary, tags, skipped)
 
-	if skipped != nil && len(skipped) > 0 {
+	if len(skipped) > 0 {
 		h.logger.Warn("tags skipped during serialization", zap.String("#name", metricName), zap.Int("#skippedCount", len(skipped)))
 		if ce := h.logger.Check(zap.DebugLevel, "skipped tags"); ce != nil {
 			buffer := new(bytes.Buffer)
@@ -224,7 +224,7 @@ func (h *HttpSerializer) instrumentationLibraryToTags(instrumentationLibrary pco
 
 func (h *HttpSerializer) shouldIncludeTag(tag string) bool {
 	for i := 0; i < len(h.skipTags); i++ {
-		if strings.ToLower(tag) == strings.ToLower(h.skipTags[i]) {
+		if strings.EqualFold(tag, h.skipTags[i]) {
 			return false
 		}
 	}
